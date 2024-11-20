@@ -37,6 +37,10 @@ def ncfile_matrix(file_path):
 
 directory_path = '/home/mo/Desktop/Geoinformatics_Project/Data/dataNorthSea/rasterNorthsea'
 
+sorted_filenames = sorted(
+    [f for f in os.listdir(directory_path) if f.endswith('.nc')],
+    key=lambda x: int(os.path.splitext(x)[0]))
+
 z_dict = {}
 mask_dict = {}
 
@@ -44,10 +48,9 @@ target_rows = 47
 target_cols = 59
 
 
-for filename in os.listdir(directory_path):
+for filename in sorted_filenames:
     if filename.endswith('.nc'):  
         file_path = os.path.join(directory_path, filename)
-        
         # Reading nc files
         file_data = ncfile_matrix(file_path)
         file_key = os.path.splitext(filename)[0]        
@@ -94,8 +97,6 @@ for file_key, sea_cells in sea_cells_dict.items():
     centured = sea_cells - mean_value
     centured_dict[file_key] = centured
 
-
-
 F = np.vstack(list(centured_dict.values()))
 N = F.shape[0]
 cov_mat = np.dot(F.T, F) / (N - 1)
@@ -103,8 +104,6 @@ eigenvalues, eigenvectors = np.linalg.eig(cov_mat)
 
 
 # Selecting EOFs and calculating Principal Components (PCs) and calculating the corresponding surface to each PC () 
-
-
 selected_eofs = {}
 pc_dict = {}
 crsp_surfaces = {}
@@ -121,7 +120,13 @@ for i in range(n):
     crsp = np.dot(pc_value, eof_column.T)
     crsp_surfaces[f'contribution_{i+1}'] = crsp
     
- 
+# Shows us eash eof represent what persent of all EOFs   
+eof_percent = {}
+for i in range (n):
+    cntrb = (eigenvalues[i] / (np.sum(eigenvalues))) * 100
+    eof_percent[f'eof{i+1}_percent'] = cntrb
+    
+     
 # Reshaping EOFs into their original shape (47, 59)     
 reshaped_eofs = {}
 
@@ -138,6 +143,7 @@ for eof_key, eof_values in selected_eofs.items():
             reshaped_eof[row, col] = eof_values_flat[idx]
     reshaped_eofs[eof_key] = reshaped_eof
     
+# %% plotting section
 
 # Plotting the PCs
 time_steps = pd.date_range(start="1993-01", end="2016-01", freq="ME")
@@ -148,7 +154,7 @@ for i, (key, pc_values) in enumerate(pc_dict.items(), start=1):
     years = pd.date_range(start="1993", end="2016", freq="YS")
     plt.xticks(ticks=years, labels=years.year, rotation=45)
     plt.title(f"PC{i}")
-    plt.xlabel("Time", fontsize=12)
+    plt.xlabel("Epochs", fontsize=12)
     plt.ylabel("EOF Amplitude", fontsize=12)
     plt.grid(True, linestyle="--", alpha=0.7)
     plt.legend(fontsize=10)
