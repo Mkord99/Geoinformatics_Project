@@ -9,6 +9,8 @@ from numpy.linalg import lstsq
 from pyproj import Proj, Transformer
 from eofs.standard import Eof
 import plotly.graph_objects as go
+from IPython.display import display
+import ipywidgets as widgets
 
 def ncfile_matrix(file_path):
     data = nc.Dataset(file_path, 'r')
@@ -319,19 +321,24 @@ var_reconstruction = np.var(reconstruction)
 var_diff = np.var(F - reconstruction)
 EVS = 1 - (var_diff / var_F)
 
+print(f"Reconstruction RMSE Value: {rmse_all} cm")
+print(f"Reconstruction MAE Value: {mae_all} cm")
+print(f"Reconstruction EVS Value: {EVS}")
+
+
 
 # %% plotting section
 
 def plot_on_basemap(matrix, lats, longs, matrix_label):
-    """
-    Plots the given matrix on a Basemap projection using default parameters.
+    
+    #Plots the given matrix on a Basemap projection using default parameters.
 
-    Parameters:
-    - matrix: 2D numpy array (reshaped matrix) to plot
-    - lats: 2D numpy array representing latitude values
-    - longs: 2D numpy array representing longitude values
-    - matrix_label: Label to display on the colorbar (default: "Matrix")
-    """
+    #Parameters:
+    #- matrix: 2D numpy array (reshaped matrix) to plot
+    #- lats: 2D numpy array representing latitude values
+    #- longs: 2D numpy array representing longitude values
+    #- matrix_label: Label to display on the colorbar (default: "Matrix")
+    
     # Default values for lat_range, lon_range, cmap, and contour_levels
     lat_range = lats[:, 1]  
     lon_range = longs[1, :]
@@ -365,11 +372,12 @@ for eof_key, reshaped_eof in reshaped_eofs.items():
     matrix_label = f"{eof_key}"
     plot_on_basemap(reshaped_eof, lats, longs, matrix_label)
     
-    
+"""    
 # Plotting the PCs
 time_steps = pd.date_range(start="1993-01", end="2016-01", freq="ME")
 for i, (key, pc_values) in enumerate(pc_dict.items(), start=1):
     plt.figure()
+    plt.figure(figsize=(25, 6))
     plt.plot(time_steps, pc_values, label=f"PC {i}", color="blue", linewidth=1)
     plt.scatter(time_steps, pc_values, color="red", s=10, label="Month")
     years = pd.date_range(start="1993", end="2016", freq="YS")
@@ -380,7 +388,7 @@ for i, (key, pc_values) in enumerate(pc_dict.items(), start=1):
     plt.grid(True, linestyle="--", alpha=0.7)
     plt.legend(fontsize=10)
     plt.show()
-
+"""
 
 # plottig RMSE for each month
 plt.figure(figsize=(25, 6))
@@ -405,10 +413,10 @@ fig.update_layout(
     showlegend=True
 )
 fig.show(renderer='browser')
-"""
 
+"""
 # Input the row number to reshape (1 to 276)
-selected_row_number = int(input("Enter row number between 1 and 276: "))
+selected_row_number = 276
 
 # Ensure that the input is valid
 if 1 <= selected_row_number <= 276:
@@ -430,11 +438,8 @@ if 1 <= selected_row_number <= 276:
 else:
     print("Invalid row number. Please enter a number between 1 and 276.")
 
-
-
 plot_on_basemap(reshaped_reconstruction, lats, longs, matrix_label="Reconstruction Surafce of the Selected Month")
 plot_on_basemap(reshaped_F, lats, longs, matrix_label="Original Surface of the Selected Month")
-
 
 
 
