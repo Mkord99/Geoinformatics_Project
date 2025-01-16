@@ -8,7 +8,7 @@ from shapely.geometry import Polygon, Point
 from numpy.linalg import lstsq
 from pyproj import Proj, Transformer
 from eofs.standard import Eof
-
+import plotly.graph_objects as go
 
 def ncfile_matrix(file_path):
     data = nc.Dataset(file_path, 'r')
@@ -105,13 +105,19 @@ sea_cells_dict = {}
 for file_key, matrix in z_dict.items():
     sea_cells = matrix[super_mask == 1].compressed()
     sea_cells_dict[file_key] = sea_cells.reshape(1, -1)
-    
+ 
+ 
 # Demeaning data for covariance matrix calculation
 centered_dict = {}
 for file_key, sea_cells in sea_cells_dict.items():
+    
     mean_value = sea_cells.mean()
+  
     centered = sea_cells - mean_value
+
     centered_dict[file_key] = centered
+    
+
 
 F = np.vstack(list(centered_dict.values()))
 
@@ -166,13 +172,13 @@ for i in range(eofs.shape[0]):
     for file_key, df in crsp_surfaces[f'crsp_surf_{i+1}'].items():
         globals()[f'crsp_surf_{i+1}'][file_key] = df
 
-"""        
+      
 # Shows us eash eof represent what persent of all EOFs   
-eof_percent = {}
-for i in range (eofs.shape[0]):
-    cntrb = (eigenvalues[i] / (np.sum(eigenvalues))) * 100
-    eof_percent[f'eof{i+1}_percent'] = cntrb
-"""    
+#eof_percent = {}
+#for i in range (eofs.shape[0]):
+#    cntrb = (eigenvalues[i] / (np.sum(eigenvalues))) * 100
+#    eof_percent[f'eof{i+1}_percent'] = cntrb
+   
      
 # Reshaping EOFs into their original shape (47, 59)     
 reshaped_eofs = {}
@@ -275,7 +281,7 @@ obs_vector = []
 for file_key, stations in roi_stations.items():
     for index, station in stations.iterrows():
         pix_id = station['pix_id']
-        observed_height = station['height']  
+        observed_height = station['height'] / 10
 
         
         crsp_values = []
@@ -297,7 +303,7 @@ reconstruction = np.zeros_like(next(iter(org_crsp_surfs.values())))
 for i in range(eofs.shape[0]):
         reconstruction += coefficients[i] * org_crsp_surfs[f'crsp_surf_{i+1}']
 
-
+"""
 # %% plotting section
 
 # Plotting the PCs
@@ -315,7 +321,7 @@ for i, (key, pc_values) in enumerate(pc_dict.items(), start=1):
     plt.legend(fontsize=10)
     plt.show()
 
-
+"""
 # Plotting EOFs    
 lat_range = lats[:, 1]  
 lon_range = longs[1, :]
@@ -347,19 +353,46 @@ for eof_key, reshaped_eof in reshaped_eofs.items():
     plt.show()
 
 
+# Calculatin RMSE, MAE and EVS
+rmse_all = np.sqrt(np.mean((reconstruction - F) ** 2))
+mae_all = np.mean(np.abs(reconstruction - F))
+
+rmse_values = np.sqrt(np.mean((reconstruction - F) ** 2, axis=1))
+mae_values = np.mean(np.abs(reconstruction - F), axis=1)
+
+rmse_values_col = np.sqrt(np.mean((reconstruction - F) ** 2, axis=0))
+mae_values_col = np.mean(np.abs(reconstruction - F), axis=0)
+
+var_F = np.var(F)
+var_reconstruction = np.var(reconstruction)
+var_diff = np.var(F - reconstruction)
+EVS = 1 - (var_diff / var_F)
 
 
+# plottig RMSE for each month
+plt.figure(figsize=(25, 6))
+plt.plot(range(1, 277), rmse_values, marker='.', linestyle='-', color='b', linewidth=0.7, label="RMSE")
+plt.plot(range(1, 277), mae_values, marker='.', linestyle='-', color='r', linewidth=0.7, label="MAE")
+plt.title("RMS and MAE Values by Month") 
+plt.xlabel("Month")
+plt.ylabel("Values (cm)")
+plt.grid(True)
+plt.legend()
+plt.xticks(ticks=range(1, 277, 12))
+plt.show()
 
-
-
-
-
-
-
-
-
-
-
+"""
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=list(range(1, 277)), y=rmse_values, mode='lines+markers', name='RMSE', line=dict(color='blue', width=2)))
+fig.add_trace(go.Scatter(x=list(range(1, 277)), y=mae_values, mode='lines+markers', name='MAE', line=dict(color='red', width=2)))
+fig.update_layout(
+    title="RMS and MAE Values by Month",
+    xaxis_title="Month",
+    yaxis_title="Values (cm)",
+    showlegend=True
+)
+fig.show(renderer='browser')
+"""
 
 
 
