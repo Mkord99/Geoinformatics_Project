@@ -132,7 +132,7 @@ org_crsp_surfs = {}
 selected_eofs = {}
 pc_dict = {}
 
-#n is the number of EOF that user want to select
+
 
 for i in range(eofs.shape[0]):  
     eof_column = eofs[i, :].reshape(-1, 1)  
@@ -302,56 +302,7 @@ coefficients, residuals, rank, singular_values = lstsq(A, b, rcond= None)
 reconstruction = np.zeros_like(next(iter(org_crsp_surfs.values())))
 for i in range(eofs.shape[0]):
         reconstruction += coefficients[i] * org_crsp_surfs[f'crsp_surf_{i+1}']
-
-"""
-# %% plotting section
-
-# Plotting the PCs
-time_steps = pd.date_range(start="1993-01", end="2016-01", freq="ME")
-for i, (key, pc_values) in enumerate(pc_dict.items(), start=1):
-    plt.figure()
-    plt.plot(time_steps, pc_values, label=f"PC {i}", color="blue", linewidth=1)
-    plt.scatter(time_steps, pc_values, color="red", s=10, label="Month")
-    years = pd.date_range(start="1993", end="2016", freq="YS")
-    plt.xticks(ticks=years, labels=years.year, rotation=45)
-    plt.title(f"PC{i}")
-    plt.xlabel("Epochs", fontsize=12)
-    plt.ylabel("EOF Amplitude", fontsize=12)
-    plt.grid(True, linestyle="--", alpha=0.7)
-    plt.legend(fontsize=10)
-    plt.show()
-
-"""
-# Plotting EOFs    
-lat_range = lats[:, 1]  
-lon_range = longs[1, :]
-lat_min, lat_max = np.min(lat_range) - 1, np.max(lat_range) + 1
-lon_min, lon_max = np.min(lon_range) - 6, np.max(lon_range) + 6
-
-m = Basemap(projection='merc', llcrnrlat=lat_min, urcrnrlat=lat_max, llcrnrlon=lon_min, urcrnrlon=lon_max, resolution='i')
-for eof_key, reshaped_eof in reshaped_eofs.items():
-    masked_eof = np.ma.masked_invalid(reshaped_eof)
-    clevs = np.linspace(masked_eof.min(), masked_eof.max(), 21)
-    plt.figure()
-
-    lon_grid, lat_grid = np.meshgrid(lon_range, lat_range)  
-    x, y = m(lon_grid, lat_grid)
-    cs = m.contourf(x, y, masked_eof, levels=clevs, cmap="RdBu_r", extend="both")
-
-    m.drawcoastlines()
-    m.drawcountries()
-    m.drawparallels(np.arange(lat_min, lat_max, 5), labels=[1, 0, 0, 0])
-    m.drawmeridians(np.arange(lon_min, lon_max, 10), labels=[0, 0, 0, 1])
-    
-    cb = m.colorbar(cs, location='right', pad="5%")
-    cb.set_label(f"{eof_key}")
-    
-    plt.title(f"{eof_key}", fontsize=14)
-    plt.xlabel("Longitude")
-    plt.ylabel("Latitude")
-    plt.tight_layout()
-    plt.show()
-
+        
 
 # Calculatin RMSE, MAE and EVS
 rmse_all = np.sqrt(np.mean((reconstruction - F) ** 2))
@@ -367,6 +318,68 @@ var_F = np.var(F)
 var_reconstruction = np.var(reconstruction)
 var_diff = np.var(F - reconstruction)
 EVS = 1 - (var_diff / var_F)
+
+
+# %% plotting section
+
+def plot_on_basemap(matrix, lats, longs, matrix_label):
+    """
+    Plots the given matrix on a Basemap projection using default parameters.
+
+    Parameters:
+    - matrix: 2D numpy array (reshaped matrix) to plot
+    - lats: 2D numpy array representing latitude values
+    - longs: 2D numpy array representing longitude values
+    - matrix_label: Label to display on the colorbar (default: "Matrix")
+    """
+    # Default values for lat_range, lon_range, cmap, and contour_levels
+    lat_range = lats[:, 1]  
+    lon_range = longs[1, :]
+    cmap = "RdBu_r"
+    contour_levels = 21
+    
+    # Calculate the bounding latitudes and longitudes
+    lat_min, lat_max = np.min(lat_range) - 1, np.max(lat_range) + 1
+    lon_min, lon_max = np.min(lon_range) - 6, np.max(lon_range) + 6
+    m = Basemap(projection='merc', llcrnrlat=lat_min, urcrnrlat=lat_max, llcrnrlon=lon_min, urcrnrlon=lon_max, resolution='i')
+    masked_matrix = np.ma.masked_invalid(matrix)
+    clevs = np.linspace(masked_matrix.min(), masked_matrix.max(), contour_levels)
+    plt.figure()
+    lon_grid, lat_grid = np.meshgrid(lon_range, lat_range)
+    x, y = m(lon_grid, lat_grid)
+    cs = m.contourf(x, y, masked_matrix, levels=clevs, cmap=cmap, extend="both")
+    m.drawcoastlines()
+    m.drawcountries()
+    m.drawparallels(np.arange(lat_min, lat_max, 5), labels=[1, 0, 0, 0])
+    m.drawmeridians(np.arange(lon_min, lon_max, 10), labels=[0, 0, 0, 1])
+    cb = m.colorbar(cs, location='right', pad="5%")
+    cb.set_label(matrix_label)
+    plt.title(matrix_label, fontsize=10)
+    plt.xlabel("Longitude")
+    plt.ylabel("Latitude")
+    plt.tight_layout()
+    plt.show()
+
+# Plotting EOFs
+for eof_key, reshaped_eof in reshaped_eofs.items():
+    matrix_label = f"{eof_key}"
+    plot_on_basemap(reshaped_eof, lats, longs, matrix_label)
+    
+    
+# Plotting the PCs
+time_steps = pd.date_range(start="1993-01", end="2016-01", freq="ME")
+for i, (key, pc_values) in enumerate(pc_dict.items(), start=1):
+    plt.figure()
+    plt.plot(time_steps, pc_values, label=f"PC {i}", color="blue", linewidth=1)
+    plt.scatter(time_steps, pc_values, color="red", s=10, label="Month")
+    years = pd.date_range(start="1993", end="2016", freq="YS")
+    plt.xticks(ticks=years, labels=years.year, rotation=45)
+    plt.title(f"PC{i}")
+    plt.xlabel("Epochs", fontsize=12)
+    plt.ylabel("EOF Amplitude", fontsize=12)
+    plt.grid(True, linestyle="--", alpha=0.7)
+    plt.legend(fontsize=10)
+    plt.show()
 
 
 # plottig RMSE for each month
@@ -394,6 +407,33 @@ fig.update_layout(
 fig.show(renderer='browser')
 """
 
+# Input the row number to reshape (1 to 276)
+selected_row_number = int(input("Enter row number between 1 and 276: "))
+
+# Ensure that the input is valid
+if 1 <= selected_row_number <= 276:
+    selected_row_index = selected_row_number - 1
+    reconstruction_row = reconstruction[selected_row_index]
+    F_row = F[selected_row_index]
+    reshaped_reconstruction = np.full((target_rows, target_cols), np.nan)
+    reshaped_F = np.full((target_rows, target_cols), np.nan)
+    reconstruction_row_flat = reconstruction_row.flatten()
+    F_row_flat = F_row.flatten()
+    for idx, cell_id in enumerate(fl_id_matrix.flatten()):
+        if cell_id != '':
+            # Extract the row and column indices from the ID matrix
+            row = int(cell_id[:2]) - 1
+            col = int(cell_id[2:]) - 1
+            reshaped_reconstruction[row, col] = reconstruction_row_flat[idx]
+            reshaped_F[row, col] = F_row_flat[idx]
+    
+else:
+    print("Invalid row number. Please enter a number between 1 and 276.")
+
+
+
+plot_on_basemap(reshaped_reconstruction, lats, longs, matrix_label="Reconstruction Surafce of the Selected Month")
+plot_on_basemap(reshaped_F, lats, longs, matrix_label="Original Surface of the Selected Month")
 
 
 
