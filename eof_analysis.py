@@ -8,9 +8,7 @@ from shapely.geometry import Polygon, Point
 from numpy.linalg import lstsq
 from pyproj import Proj, Transformer
 from eofs.standard import Eof
-import plotly.graph_objects as go
-from IPython.display import display
-import ipywidgets as widgets
+
 
 def ncfile_matrix(file_path):
     data = nc.Dataset(file_path, 'r')
@@ -111,9 +109,12 @@ for file_key, matrix in z_dict.items():
  
 # Demeaning data for covariance matrix calculation
 centered_dict = {}
+mean_dict = {}
 for file_key, sea_cells in sea_cells_dict.items():
     
     mean_value = sea_cells.mean()
+    
+    mean_dict[file_key] = mean_value
   
     centered = sea_cells - mean_value
 
@@ -246,7 +247,7 @@ for key, df in org_tide_data.items():
     
 id_coordinates_df['x'], id_coordinates_df['y'] = transformer.transform(id_coordinates_df['lon'].values, id_coordinates_df['lat'].values)
         
-
+    
 roi_vertices = [ (-1.1759598042, 60.7411160031), (6.6149725916, 62.9700725976), (12.8227208643, 59.1162691398), (8.9064232963, 56.4498537744),
     (9.1147369967, 53.2209914178), (1.1988163806, 50.2837682418), (-4.8006181916, 57.2206144659), (-1.1759598042, 60.7411160031)]
 
@@ -307,6 +308,9 @@ for i in range(eofs.shape[0]):
         
 
 # Calculatin RMSE, MAE and EVS
+squared_error = np.sum((F - reconstruction) ** 2)
+errors_sum = np.sum((reconstruction- F))
+
 rmse_all = np.sqrt(np.mean((reconstruction - F) ** 2))
 mae_all = np.mean(np.abs(reconstruction - F))
 
@@ -321,15 +325,17 @@ var_reconstruction = np.var(reconstruction)
 var_diff = np.var(F - reconstruction)
 EVS = 1 - (var_diff / var_F)
 
-print(f"Reconstruction RMSE Value: {rmse_all} cm")
-print(f"Reconstruction MAE Value: {mae_all} cm")
-print(f"Reconstruction EVS Value: {EVS}")
+print(f"Sum of Squared Error: {squared_error} cm2")
+print(f"Sum of Errors: {errors_sum} cm")
+print(f"RMSE Value: {rmse_all} cm")
+print(f"MAE Value: {mae_all} cm")
+print(f"EVS Value: {EVS}")
 
 
-
+diff = reconstruction - F
 # %% plotting section
 
-def plot_on_basemap(matrix, lats, longs, matrix_label):
+def plot_on_basemap(matrix, lats, longs, plot_label):
     
     #Plots the given matrix on a Basemap projection using default parameters.
 
@@ -337,7 +343,7 @@ def plot_on_basemap(matrix, lats, longs, matrix_label):
     #- matrix: 2D numpy array (reshaped matrix) to plot
     #- lats: 2D numpy array representing latitude values
     #- longs: 2D numpy array representing longitude values
-    #- matrix_label: Label to display on the colorbar (default: "Matrix")
+    #- plot_label: Label to display on the colorbar (default: "Matrix")
     
     # Default values for lat_range, lon_range, cmap, and contour_levels
     lat_range = lats[:, 1]  
@@ -360,19 +366,20 @@ def plot_on_basemap(matrix, lats, longs, matrix_label):
     m.drawparallels(np.arange(lat_min, lat_max, 5), labels=[1, 0, 0, 0])
     m.drawmeridians(np.arange(lon_min, lon_max, 10), labels=[0, 0, 0, 1])
     cb = m.colorbar(cs, location='right', pad="5%")
-    cb.set_label(matrix_label)
-    plt.title(matrix_label, fontsize=10)
+    #cb.set_label("cm")
+    plt.title(plot_label, fontsize=10)
     plt.xlabel("Longitude")
     plt.ylabel("Latitude")
     plt.tight_layout()
     plt.show()
 
+"""
 # Plotting EOFs
 for eof_key, reshaped_eof in reshaped_eofs.items():
-    matrix_label = f"{eof_key}"
-    plot_on_basemap(reshaped_eof, lats, longs, matrix_label)
+    plot_label = f"{eof_key}"
+    plot_on_basemap(reshaped_eof, lats, longs, plot_label)
     
-"""    
+   
 # Plotting the PCs
 time_steps = pd.date_range(start="1993-01", end="2016-01", freq="ME")
 for i, (key, pc_values) in enumerate(pc_dict.items(), start=1):
@@ -388,7 +395,7 @@ for i, (key, pc_values) in enumerate(pc_dict.items(), start=1):
     plt.grid(True, linestyle="--", alpha=0.7)
     plt.legend(fontsize=10)
     plt.show()
-"""
+
 
 # plottig RMSE for each month
 plt.figure(figsize=(25, 6))
@@ -403,30 +410,27 @@ plt.xticks(ticks=range(1, 277, 12))
 plt.show()
 
 """
-fig = go.Figure()
-fig.add_trace(go.Scatter(x=list(range(1, 277)), y=rmse_values, mode='lines+markers', name='RMSE', line=dict(color='blue', width=2)))
-fig.add_trace(go.Scatter(x=list(range(1, 277)), y=mae_values, mode='lines+markers', name='MAE', line=dict(color='red', width=2)))
-fig.update_layout(
-    title="RMS and MAE Values by Month",
-    xaxis_title="Month",
-    yaxis_title="Values (cm)",
-    showlegend=True
-)
-fig.show(renderer='browser')
 
-"""
 # Input the row number to reshape (1 to 276)
-selected_row_number = 276
+selected_row_number = 77
 
-# Ensure that the input is valid
 if 1 <= selected_row_number <= 276:
     selected_row_index = selected_row_number - 1
     reconstruction_row = reconstruction[selected_row_index]
     F_row = F[selected_row_index]
+    difference_row = reconstruction_row - F_row
+    sq_difference_row = (reconstruction_row - F_row)**2
+    
     reshaped_reconstruction = np.full((target_rows, target_cols), np.nan)
     reshaped_F = np.full((target_rows, target_cols), np.nan)
+    reshaped_difference = np.full((target_rows, target_cols), np.nan)
+    reshaped_sq_difference = np.full((target_rows, target_cols), np.nan) 
+    
     reconstruction_row_flat = reconstruction_row.flatten()
     F_row_flat = F_row.flatten()
+    difference_row_flat = difference_row.flatten()
+    sq_difference_row_flat = sq_difference_row.flatten()
+    
     for idx, cell_id in enumerate(fl_id_matrix.flatten()):
         if cell_id != '':
             # Extract the row and column indices from the ID matrix
@@ -434,13 +438,29 @@ if 1 <= selected_row_number <= 276:
             col = int(cell_id[2:]) - 1
             reshaped_reconstruction[row, col] = reconstruction_row_flat[idx]
             reshaped_F[row, col] = F_row_flat[idx]
+            reshaped_difference[row, col] = difference_row_flat[idx]
+            reshaped_sq_difference[row, col] = sq_difference_row_flat[idx]
+    
     
 else:
     print("Invalid row number. Please enter a number between 1 and 276.")
+    
+error_variances = []
 
-plot_on_basemap(reshaped_reconstruction, lats, longs, matrix_label="Reconstruction Surafce of the Selected Month")
-plot_on_basemap(reshaped_F, lats, longs, matrix_label="Original Surface of the Selected Month")
+for epoch in range(F.shape[0]):
+    error = reconstruction[epoch, :] - F[epoch, :]
+    var_error = np.var(error, ddof=1) 
+    error_variances.append(var_error)
 
+# Average variance of reconstruction errors across all epochs
+average_variance = np.mean(error_variances)
+
+print("Average Variance of Reconstruction Errors:", average_variance)
+
+plot_on_basemap(reshaped_reconstruction, lats, longs, plot_label="Reconstruction Surafce of the Selected Month [cm]")
+plot_on_basemap(reshaped_F, lats, longs, plot_label="Original Surface of the Selected Month [cm]")
+plot_on_basemap(reshaped_difference, lats, longs, plot_label="Misfits surface of the Selected Month [cm]")
+plot_on_basemap(reshaped_sq_difference, lats, longs, plot_label="Squared misfits surface of the Selected Month [cm2]")
 
 
 
