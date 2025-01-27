@@ -75,6 +75,7 @@ for filename in sorted_ncfiles:
 # Creating supermask, 1 for 276 month data avaiablity and 0 if some or all months are missing
 masks_sum = np.sum(list(mask_dict.values()), axis=0)
 super_mask = np.where(masks_sum == 276, 1, 0)
+mask_lost = np.where(2 < masks_sum < 276, 1, 0)
 
 # Creating ID matrix for sea cells
 id_matrix = np.full_like(super_mask, '', dtype=object)
@@ -176,12 +177,6 @@ for i in range(eofs.shape[0]):
         globals()[f'crsp_surf_{i+1}'][file_key] = df
 
       
-# Shows us eash eof represent what persent of all EOFs   
-#eof_percent = {}
-#for i in range (eofs.shape[0]):
-#    cntrb = (eigenvalues[i] / (np.sum(eigenvalues))) * 100
-#    eof_percent[f'eof{i+1}_percent'] = cntrb
-   
      
 # Reshaping EOFs into their original shape (47, 59)     
 reshaped_eofs = {}
