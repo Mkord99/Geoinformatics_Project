@@ -75,7 +75,7 @@ for filename in sorted_ncfiles:
 # Creating supermask, 1 for 276 month data avaiablity and 0 if some or all months are missing
 masks_sum = np.sum(list(mask_dict.values()), axis=0)
 super_mask = np.where(masks_sum == 276, 1, 0)
-mask_lost = np.where(2 < masks_sum < 276, 1, 0)
+mask_lost = np.where((2 < masks_sum) & (masks_sum  < 276), 1, 0)
 
 # Creating ID matrix for sea cells
 id_matrix = np.full_like(super_mask, '', dtype=object)
@@ -416,7 +416,7 @@ for i in range(optimal_eofs):
     plt.grid(True, linestyle="--", alpha=0.7)
     plt.legend(fontsize=10)
     plt.show()
-
+"""
 
 
 # plottig RMSE for each month
@@ -433,11 +433,11 @@ plt.grid(True)
 plt.legend()
 plt.xticks(ticks=range(1, 277, 12))  # Ticks every 12 months (to represent years)
 plt.show()
-"""
+
 
 
 # Input the row number to reshape (1 to 276)
-selected_row_number = 20
+selected_row_number = 258
 
 if 1 <= selected_row_number <= 276:
     selected_row_index = selected_row_number - 1
