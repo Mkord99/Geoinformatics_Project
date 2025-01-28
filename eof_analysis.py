@@ -416,7 +416,7 @@ for i in range(optimal_eofs):
     plt.grid(True, linestyle="--", alpha=0.7)
     plt.legend(fontsize=10)
     plt.show()
-"""
+
 
 
 # plottig RMSE for each month
@@ -434,7 +434,7 @@ plt.legend()
 plt.xticks(ticks=range(1, 277, 12))  # Ticks every 12 months (to represent years)
 plt.show()
 
-
+"""
 
 # Input the row number to reshape (1 to 276)
 selected_row_number = 258
