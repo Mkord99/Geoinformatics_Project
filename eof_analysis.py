@@ -38,6 +38,7 @@ def ncfile_matrix(file_path):
     return dic
 
 
+
 directory_path = '/home/mo/Desktop/Geoinformatics_Project/Data/dataNorthSea/rasterNorthsea'
 
 sorted_ncfiles = sorted(
