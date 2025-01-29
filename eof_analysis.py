@@ -10,6 +10,7 @@ from pyproj import Proj, Transformer
 from eofs.standard import Eof
 
 
+#  The definition to read the .nc files and extract their content
 def ncfile_matrix(file_path):
     data = nc.Dataset(file_path, 'r')
     z_data = data.variables['z'][:] 
@@ -38,9 +39,10 @@ def ncfile_matrix(file_path):
     return dic
 
 
+# Modify the file path please
+directory_path = '....../dataNorthSea/rasterNorthsea'
 
-directory_path = '/home/mo/Desktop/Geoinformatics_Project/Data/dataNorthSea/rasterNorthsea'
-
+# Sorting th read files based on their names that is actualy their epoch date
 sorted_ncfiles = sorted(
     [f for f in os.listdir(directory_path) if f.endswith('.nc')],
     key=lambda x: int(os.path.splitext(x)[0]))
@@ -76,9 +78,10 @@ for filename in sorted_ncfiles:
 # Creating supermask, 1 for 276 month data avaiablity and 0 if some or all months are missing
 masks_sum = np.sum(list(mask_dict.values()), axis=0)
 super_mask = np.where(masks_sum == 276, 1, 0)
+# The cells that some of their epochs are missing, so they all ignored
 mask_lost = np.where((2 < masks_sum) & (masks_sum  < 276), 1, 0)
 
-# Creating ID matrix for sea cells
+# Creating ID matrix for sea cells, two left difita are the row number and two right digita are the column number
 id_matrix = np.full_like(super_mask, '', dtype=object)
 for i in range(target_rows):
     for j in range(target_cols):
@@ -86,7 +89,8 @@ for i in range(target_rows):
             row_id = f"{i + 1:02}"  
             col_id = f"{j + 1:02}" 
             id_matrix[i, j] = row_id + col_id
-            
+
+# Adding the coordinates of each id            
 id_coordinates = []
 for i in range(target_rows):
     for j in range(target_cols):
@@ -99,7 +103,7 @@ for i in range(target_rows):
 id_coordinates_df = pd.DataFrame(id_coordinates)
 
 
-# Flattening only sea cells
+# Flattening only sea cells and ignoring the empty cells that are between them
 fl_id_matrix = id_matrix[id_matrix != ''].reshape(1, -1)
 ext_id_matrix = np.tile(fl_id_matrix, (276, 1))
 sea_cells_dict = {}
@@ -109,7 +113,7 @@ for file_key, matrix in z_dict.items():
     sea_cells_dict[file_key] = sea_cells.reshape(1, -1)
  
  
-# Demeaning data for covariance matrix calculation
+# Row-wised demeaning data, subtracting the mean value of each epoch from thedata of that epoch
 centered_dict = {}
 mean_dict = {}
 for file_key, sea_cells in sea_cells_dict.items():
@@ -123,21 +127,22 @@ for file_key, sea_cells in sea_cells_dict.items():
     centered_dict[file_key] = centered
     
 
-
+# The super matrix that each row represent each epoch and each columns is a specefic location index
 F = np.vstack(list(centered_dict.values()))
 
+# using EOF library that apply SVD (singular values decomposition) on F
 solver = Eof(F)
 eofs = solver.eofs(neofs = 10)  
 pcs = solver.pcs(npcs = 10)     
 
 
-# Selecting EOFs and calculating Principal Components (PCs) and calculating the corresponding surface to each PC () 
+# Selecting EOFs and Principal Components (PCs) and calculating the corresponding surface to each PC () 
 crsp_surfaces = {}
 org_crsp_surfs = {}
 selected_eofs = {}
 pc_dict = {}
 
-
+# Each EOf corresponding reconstruction = pc.eof(T)
 
 for i in range(eofs.shape[0]):  
     eof_column = eofs[i, :].reshape(-1, 1)  
@@ -198,12 +203,14 @@ for eof_key, eof_values in selected_eofs.items():
 
 # %% Tide Gauges data
 
-directory_path = '/home/mo/Desktop/Geoinformatics_Project/Data/dataNorthSea/stationsPerYear/tgDAC_seldemeanalref_proc'
+# Modify the data path please
+directory_path = '...../dataNorthSea/stationsPerYear/tgDAC_seldemeanalref_proc'
 
 sorted_csvfiles = sorted([f for f in os.listdir(directory_path) if f.endswith('.csv')], key=lambda x: int(os.path.splitext(x)[0]))
 
 org_tide_data = {}
 
+# Reading th tide gauges data
 for filename in sorted_csvfiles:
     if filename.endswith('.csv'):  
         file_path = os.path.join(directory_path, filename)
@@ -243,7 +250,7 @@ for key, df in org_tide_data.items():
     
 id_coordinates_df['x'], id_coordinates_df['y'] = transformer.transform(id_coordinates_df['lon'].values, id_coordinates_df['lat'].values)
         
-    
+# The Region of Interest that we only consider the stations inside this area   
 roi_vertices = [ (-1.1759598042, 60.7411160031), (6.6149725916, 62.9700725976), (12.8227208643, 59.1162691398), (8.9064232963, 56.4498537744),
     (9.1147369967, 53.2209914178), (1.1988163806, 50.2837682418), (-4.8006181916, 57.2206144659), (-1.1759598042, 60.7411160031)]
 
@@ -259,12 +266,12 @@ for file_key, tide_data in org_tide_data.items():
     
 
 # assigning each station to a pixel and assigning the pixel id based on id matrix
+# The definition to find the cell that each station is located in
 def find_nearest_pixel_id(station_x, station_y, id_coordinates_df):
     
     distances = np.sqrt((id_coordinates_df['y'] - station_y)**2 + (id_coordinates_df['x'] - station_x)**2)
     nearest_pix = distances.idxmin()
     return id_coordinates_df.loc[nearest_pix, 'id']
-
 
 
 for file_key, stations in roi_stations.items():
@@ -314,11 +321,11 @@ for n_eofs in range(1, 11):  # n_eofs ranges from 1 to 10
         reconstruction += coefficients[i] * org_crsp_surfs[f'crsp_surf_{i+1}']
 
     # Calculate errors
-    squared_error = np.sum((F - reconstruction) ** 2)
-    rmse_all = np.sqrt(np.mean((reconstruction - F) ** 2))
-    mae_all = np.mean(np.abs(reconstruction - F))
-    var_diff = np.var(F - reconstruction)
-    EVS = 1 - (var_diff / np.var(F))
+    squared_error = np.sum((F - reconstruction) ** 2) # Squared Error
+    rmse_all = np.sqrt(np.mean((reconstruction - F) ** 2)) # Root mean square error
+    mae_all = np.mean(np.abs(reconstruction - F)) # Mean absolout error
+    var_diff = np.var(F - reconstruction) # Variance of the diffrence matrix between the original F and the reconstruction
+    EVS = 1 - (var_diff / np.var(F)) # Explaind variance score
     
     print(f"  Squared Error: {squared_error}")
     print(f"  RMSE: {rmse_all}")
@@ -338,7 +345,7 @@ for n_eofs in range(1, 11):  # n_eofs ranges from 1 to 10
             "evs": EVS,
         }
 
-# After looping, print the optimal results
+# Printing the optimal solotion
 print("\nOptimal Results:")
 print(f"  Optimal number of EOFs: {optimal_eofs}")
 print(f"  Minimum Squared Error: {min_squared_error}")
@@ -355,6 +362,7 @@ np.save("optimal_reconstruction.npy", optimal_reconstruction)
 diff = optimal_reconstruction - F
 # %% plotting section
 
+# The definition to plot the requiered surfaces on the base map in the north sea
 def plot_on_basemap(matrix, lats, longs, plot_label):
     
     #Plots the given matrix on a Basemap projection using default parameters.
@@ -393,8 +401,7 @@ def plot_on_basemap(matrix, lats, longs, plot_label):
     plt.tight_layout()
     plt.show()
 
-"""
-# Plotting EOFs
+# Ploting the selected EOFs on the base map
 for i in range(optimal_eofs):  
     eof_key = f"EOF{i+1}"
     reshaped_eof = reshaped_eofs[eof_key]
@@ -402,7 +409,7 @@ for i in range(optimal_eofs):
     plot_on_basemap(reshaped_eof, lats, longs, plot_label)
 
     
-# Plotting the PCs
+# # Ploting the selected PCs 
 time_steps = pd.date_range(start="1993-01", end="2016-01", freq="ME")
 for i in range(optimal_eofs):  
     pc_values = pc_dict[f'PC{i+1}'] 
@@ -420,7 +427,7 @@ for i in range(optimal_eofs):
 
 
 
-# plottig RMSE for each month
+# plottig RMSE for each epoch
 rmse_values = np.sqrt(np.mean((optimal_reconstruction - F) ** 2, axis=1))
 mae_values = np.mean(np.abs(optimal_reconstruction - F), axis=1)
 
@@ -435,9 +442,9 @@ plt.legend()
 plt.xticks(ticks=range(1, 277, 12))  # Ticks every 12 months (to represent years)
 plt.show()
 
-"""
 
-# Input the row number to reshape (1 to 276)
+
+# Input the epoch number to reshape (1 to 276), to check the number of each epoch look at the sorted_csvfiles matrix
 selected_row_number = 258
 
 if 1 <= selected_row_number <= 276:
@@ -466,11 +473,12 @@ if 1 <= selected_row_number <= 276:
             reshaped_F[row, col] = F_row_flat[idx]
             reshaped_difference[row, col] = difference_row_flat[idx]
             reshaped_sq_difference[row, col] = sq_difference_row_flat[idx]
-    
-    
+
 else:
     print("Invalid row number. Please enter a number between 1 and 276.")
-    
+ 
+
+# Calculating the variance of the error of each epoch (the diffrence of each epoch and the original F epochs)
 error_variances = []
 
 for epoch in range(F.shape[0]):
