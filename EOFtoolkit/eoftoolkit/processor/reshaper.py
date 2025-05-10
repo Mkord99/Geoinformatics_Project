@@ -28,8 +28,8 @@ def reshape_to_spatial_grid(flattened_data, id_matrix, target_dims=None, flip_y=
     if target_dims is None:
         target_dims = id_matrix.shape
     
-    # Create empty grid filled with NaN
-    reshaped_grid = np.full(target_dims, np.nan, dtype=flattened_data.dtype)
+    # Create empty grid filled with NaN - ENSURE float64 dtype
+    reshaped_grid = np.full(target_dims, np.nan, dtype=np.float64)
     
     # Get flattened ID matrix to use as a reference
     fl_id_values = id_matrix[id_matrix != ''].flatten()
@@ -45,13 +45,29 @@ def reshape_to_spatial_grid(flattened_data, id_matrix, target_dims=None, flip_y=
     
     # Map the values back to the grid based on the ID
     for idx, cell_id in enumerate(fl_id_values):
-        # Extract row and column indices from the ID (assuming RRCC format)
-        row = int(cell_id[:2]) - 1  # Adjust if base is 0
-        col = int(cell_id[2:]) - 1  # Adjust if base is 0
+        try:
+            # Ensure cell_id is a string
+            cell_id = str(cell_id)
+            
+            # Extract row and column indices from the ID
+            if len(cell_id) >= 4:
+                # Parse the ID (format should be RRCC)
+                row = int(cell_id[:2]) - 1  # Convert to 0-based index
+                col = int(cell_id[2:4]) - 1  # Convert to 0-based index
+            else:
+                # Handle unexpected ID format
+                continue
+                
+        except (ValueError, IndexError) as e:
+            # If parsing fails, skip this ID
+            continue
         
-        # Assign the value to the grid
+        # Assign the value to the grid (with bounds checking)
         if 0 <= row < target_dims[0] and 0 <= col < target_dims[1]:
             reshaped_grid[row, col] = flattened_data[idx]
+    
+    print(f"Before flip: reshaped_grid[0,0] = {reshaped_grid[0,0]}")
+    print(f"Before flip: reshaped_grid shape = {reshaped_grid.shape}")
     
     # Flip the grid vertically if needed to match the correct orientation
     if flip_y:

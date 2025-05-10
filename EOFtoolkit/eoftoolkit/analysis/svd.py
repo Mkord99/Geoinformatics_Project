@@ -29,7 +29,12 @@ def perform_svd(super_matrix, num_modes=None, compute_surfaces=True):
         - 'cumulative_variance': Cumulative percentage of variance explained
         - 'corresponding_surfaces': Corresponding surfaces (if compute_surfaces is True)
     """
+    
     try:
+        # Check for zero matrix
+        if np.all(super_matrix == 0):
+            raise SVDError("Cannot perform SVD on zero matrix")
+
         # Perform SVD
         U, s, Vt = linalg.svd(super_matrix, full_matrices=False)
         

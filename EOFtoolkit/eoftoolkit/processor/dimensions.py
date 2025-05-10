@@ -67,7 +67,7 @@ def standardize_dimensions(matrices_dict, target_dims=None):
         rows, cols = matrix.shape[:2]
         
         # Create a new matrix filled with NaN values
-        standardized = np.full(target_dims, np.nan, dtype=matrix.dtype)
+        standardized = np.full(target_dims, np.nan, dtype=np.float64)
         
         # Copy existing data
         standardized[:rows, :cols] = matrix

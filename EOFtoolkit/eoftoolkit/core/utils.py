@@ -194,6 +194,8 @@ def filter_files_by_date_range(file_paths, start_date, end_date, date_pattern=No
             raise ValueError(f"Invalid end_date: {end_date}")
     
     # Create date range
+    if frequency == 'M':
+        frequency = 'ME'  # Use 'ME' for month end
     date_range = pd.date_range(start=start_date, end=end_date, freq=frequency)
     
     # Filter files
