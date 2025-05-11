@@ -66,8 +66,8 @@ def reshape_to_spatial_grid(flattened_data, id_matrix, target_dims=None, flip_y=
         if 0 <= row < target_dims[0] and 0 <= col < target_dims[1]:
             reshaped_grid[row, col] = flattened_data[idx]
     
-    print(f"Before flip: reshaped_grid[0,0] = {reshaped_grid[0,0]}")
-    print(f"Before flip: reshaped_grid shape = {reshaped_grid.shape}")
+    #print(f"Before flip: reshaped_grid[0,0] = {reshaped_grid[0,0]}")
+    #print(f"Before flip: reshaped_grid shape = {reshaped_grid.shape}")
     
     # Flip the grid vertically if needed to match the correct orientation
     if flip_y:
